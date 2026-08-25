@@ -33,23 +33,68 @@ animate_banner() {
 
 need_command() { command -v "$1" >/dev/null 2>&1; }
 
-install_python() {
-  if need_command python3; then return; fi
-  printf '%bPython 3 was not found. Installing it…%b\n' "$YELLOW" "$RESET"
-  if need_command apt-get; then sudo apt-get update && sudo apt-get install -y python3 python3-venv python3-pip
-  elif need_command dnf; then sudo dnf install -y python3 python3-pip
-  elif need_command pacman; then sudo pacman -Sy --noconfirm python python-pip
-  else printf '%bUnsupported package manager. Install Python 3.11+ and rerun this script.%b\n' "$YELLOW" "$RESET"; exit 1
+package_manager() {
+  if need_command apt-get; then printf 'apt'
+  elif need_command dnf; then printf 'dnf'
+  elif need_command pacman; then printf 'pacman'
+  else return 1
+  fi
+}
+
+install_packages() {
+  local manager
+  manager="$(package_manager)" || { printf '%bUnsupported package manager.%b\n' "$YELLOW" "$RESET"; exit 1; }
+  case "$manager" in
+    apt) sudo apt-get update && sudo apt-get install -y "$@" ;;
+    dnf) sudo dnf install -y "$@" ;;
+    pacman) sudo pacman -Sy --noconfirm "$@" ;;
+  esac
+}
+
+install_dependencies() {
+  local manager
+  manager="$(package_manager)" || { printf '%bUnsupported package manager. Install Python 3.11+, pip, venv, git, curl, and Docker manually.%b\n' "$YELLOW" "$RESET"; exit 1; }
+
+  printf '%bInstalling system dependencies…%b\n' "$YELLOW" "$RESET"
+  case "$manager" in
+    apt) install_packages python3 python3-venv python3-pip git curl ca-certificates ;;
+    dnf) install_packages python3 python3-pip git curl ca-certificates ;;
+    pacman) install_packages python python-pip git curl ca-certificates ;;
+  esac
+
+  # The standard Ubuntu/Debian Docker package is reliable for this local-Docker provider.
+  if ! need_command docker; then
+    printf '%bDocker was not found. Installing it…%b\n' "$YELLOW" "$RESET"
+    case "$manager" in
+      apt) install_packages docker.io ;;
+      dnf) install_packages docker ;;
+      pacman) install_packages docker ;;
+    esac
+  fi
+
+  if need_command systemctl; then
+    sudo systemctl enable --now docker 2>/dev/null || true
+  fi
+
+  # Covers systems with Python installed but no ensurepip/venv module.
+  if ! python3 -m venv --help >/dev/null 2>&1; then
+    printf '%bInstalling Python virtual-environment support…%b\n' "$YELLOW" "$RESET"
+    case "$manager" in
+      apt) install_packages python3-venv ;;
+      dnf) install_packages python3-virtualenv ;;
+      pacman) install_packages python-virtualenv ;;
+    esac
   fi
 }
 
 animate_banner
-printf '  This installs Python dependencies in an isolated virtual environment.\n'
-printf '  It does not install Docker or provision any VPS resources.\n\n'
+printf '  This installs all required system and Python dependencies automatically.\n'
+printf '  Docker is installed only when missing; VPS resources are never provisioned.\n\n'
 read -r -p '  Press Enter to install, or Ctrl+C to cancel… ' _
 
-install_python
+install_dependencies
 cd "$PROJECT_DIR"
+rm -rf .venv
 python3 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
 .venv/bin/python -m pip install -r requirements.txt
