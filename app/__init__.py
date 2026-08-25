@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 from flask_login import LoginManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -30,6 +30,10 @@ def create_app(config: type[Config] = Config) -> Flask:
     app.register_blueprint(auth_api, url_prefix="/api/v1/auth")
     app.register_blueprint(vps_api, url_prefix="/api/v1/vps")
     app.register_blueprint(admin_api, url_prefix="/api/v1/admin")
+
+    @app.get("/")
+    def index():
+        return render_template("index.html")
 
     @app.get("/health")
     def health():

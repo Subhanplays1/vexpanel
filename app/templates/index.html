@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VexPanel</title>
+  <style>
+    :root{color-scheme:dark;--bg:#090b13;--panel:#111525;--line:#252b40;--text:#f5f7ff;--muted:#97a0b8;--accent:#8b5cf6;--green:#37d996}
+    *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at 70% -10%,#312360 0,transparent 32%),var(--bg);font:15px system-ui,sans-serif;color:var(--text)}
+    main{max-width:1080px;margin:auto;padding:28px}.nav{display:flex;align-items:center;justify-content:space-between}.brand{font-size:23px;font-weight:800;letter-spacing:-1px}.mark{color:#a78bfa}.badge{color:var(--green);background:#12362c;border:1px solid #215b48;padding:6px 10px;border-radius:999px;font-size:12px}
+    .hero{padding:85px 0 52px;max-width:720px}.hero h1{font-size:clamp(38px,7vw,68px);line-height:1.02;margin:0 0 20px;letter-spacing:-3px}.hero p{font-size:18px;color:var(--muted);line-height:1.65}.actions{display:flex;gap:12px;margin-top:28px}.button{border:1px solid var(--line);padding:12px 17px;border-radius:9px;background:#171c2e;color:var(--text);font-weight:700;cursor:pointer}.button.primary{background:var(--accent);border-color:#a78bfa}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{background:linear-gradient(135deg,#14192a,#0f1321);border:1px solid var(--line);border-radius:13px;padding:20px}.card strong{display:block;font-size:25px;margin:10px 0}.card span{color:var(--muted);font-size:13px}.notice{display:none;margin:18px 0;padding:12px 14px;border:1px solid #554894;background:#1f1a3e;border-radius:9px;color:#d8d2ff}@media(max-width:650px){.grid{grid-template-columns:1fr}.hero{padding-top:60px}}
+  </style>
+</head>
+<body><main>
+  <nav class="nav"><div class="brand"><span class="mark">✦</span> VexPanel</div><div class="badge">● API online</div></nav>
+  <section class="hero"><h1>VPS management,<br><span class="mark">made clear.</span></h1><p>Manage VPS instances and browser RDP environments from one secure control panel.</p><div class="actions"><button class="button primary" onclick="showLogin()">Sign in</button><button class="button" onclick="document.querySelector('#api').scrollIntoView({behavior:'smooth'})">View API</button></div></section>
+  <div id="login" class="notice">Use <code>POST /api/v1/auth/login</code> to sign in. Configure bootstrap administrator credentials in <code>.env</code> before first start.</div>
+  <section id="api" class="grid"><div class="card"><span>VPS API</span><strong>/api/v1/vps</strong><span>Create and manage your instances.</span></div><div class="card"><span>RDP API</span><strong>/rdp</strong><span>Provision browser desktop jobs.</span></div><div class="card"><span>Health</span><strong>/health</strong><span>Service availability check.</span></div></section>
+</main><script>function showLogin(){document.querySelector('#login').style.display='block'}</script></body></html>
