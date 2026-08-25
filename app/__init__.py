@@ -58,7 +58,7 @@ def create_app(config: type[Config] = Config) -> Flask:
         return render_template("register.html", panel_name="VexPanel", error=error, is_admin=False)
 
     @app.get("/logout")
-    def logout_page(): logout_user(); return redirect(url_for("login_page"))
+    def logout_page(): logout_user(); return redirect(url_for("login"))
 
     @app.get("/dashboard")
     def dashboard():
@@ -71,10 +71,33 @@ def create_app(config: type[Config] = Config) -> Flask:
         if not current_user.is_authenticated: return redirect(url_for("login"))
         return render_template("profile.html", panel_name="VexPanel", is_admin=current_user.role in {"admin", "super_admin"})
 
-    @app.get("/create_vps")
+    @app.route("/create_vps", methods=["GET", "POST"])
     def create_vps_page():
         if not current_user.is_authenticated: return redirect(url_for("login"))
+        if request.method == "POST":
+            from .providers import get_provider
+            import uuid
+            hostname = request.form.get("hostname", "").strip()
+            os_name = request.form.get("operating_system", "ubuntu:24.04")
+            if not hostname or not all(char.isalnum() or char == "-" for char in hostname):
+                return render_template("create_vps.html", panel_name="VexPanel", is_admin=False, error="Use a hostname containing letters, numbers, and hyphens only.")
+            vps_id = str(uuid.uuid4())
+            try:
+                created = get_provider().create_vps({"id": vps_id, "hostname": hostname, "image": os_name})
+                with db.connect() as conn:
+                    conn.execute("INSERT INTO vps(id,user_id,provider_id,hostname,os,status,ipv4,plan) VALUES (?,?,?,?,?,?,?,?)", (vps_id, current_user.id, created["provider_id"], hostname, os_name, created["status"], created.get("ipv4"), request.form.get("plan", "Custom")))
+                return redirect(url_for("dashboard"))
+            except Exception:
+                return render_template("create_vps.html", panel_name="VexPanel", is_admin=False, error="VPS provisioning failed. Check that your configured provider is available.")
         return render_template("create_vps.html", panel_name="VexPanel", is_admin=current_user.role in {"admin", "super_admin"})
+
+    @app.get("/admin")
+    def admin_page():
+        if not current_user.is_authenticated or current_user.role not in {"admin", "super_admin"}: return redirect(url_for("dashboard"))
+        with db.connect() as conn:
+            users = conn.execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()
+            vps_list = conn.execute("SELECT * FROM vps ORDER BY created_at DESC").fetchall()
+        return render_template("admin.html", panel_name="VexPanel", is_admin=True, users=users, vps_list=vps_list)
 
     @app.get("/health")
     def health():
