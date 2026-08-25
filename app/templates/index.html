@@ -22,5 +22,5 @@
   <section id="api" class="grid"><div class="card"><span>VPS API</span><strong>/api/v1/vps</strong><span>Create and manage your instances.</span></div><div class="card"><span>RDP API</span><strong>/rdp</strong><span>Provision browser desktop jobs.</span></div><div class="card"><span>Health</span><strong>/health</strong><span>Service availability check.</span></div></section>
 </main><script>
 function showLogin(){document.querySelector('#login').style.display='block'}
-async function login(event){event.preventDefault();const result=document.querySelector('#result');result.textContent=' Signing in…';const response=await fetch('/api/v1/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.value,password:password.value})});const data=await response.json();result.textContent=data.success?' Signed in as '+data.data.email:' '+data.error.message}
+async function login(event){event.preventDefault();const result=document.querySelector('#result');result.textContent=' Signing in…';const response=await fetch('/api/v1/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.value,password:password.value})});const data=await response.json();if(data.success)location.assign('/dashboard');else result.textContent=' '+data.error.message}
 </script></body></html>

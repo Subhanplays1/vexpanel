@@ -35,6 +35,13 @@ def create_app(config: type[Config] = Config) -> Flask:
     def index():
         return render_template("index.html")
 
+    @app.get("/dashboard")
+    def dashboard():
+        from flask_login import current_user
+        if not current_user.is_authenticated:
+            return render_template("index.html"), 401
+        return render_template("dashboard.html", user=current_user)
+
     @app.get("/health")
     def health():
         return jsonify(success=True, data={"service": "vexpanel", "status": "ok"})
