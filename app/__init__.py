@@ -1,4 +1,5 @@
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, redirect, url_for, request
+from flask_login import current_user, login_user, logout_user
 from flask_login import LoginManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -21,7 +22,7 @@ def create_app(config: type[Config] = Config) -> Flask:
     login_manager.init_app(app)
     limiter.init_app(app)
 
-    from .auth import load_user
+    from .auth import load_user, User
     login_manager.user_loader(load_user)
 
     from .api.auth import auth_api
@@ -32,15 +33,48 @@ def create_app(config: type[Config] = Config) -> Flask:
     app.register_blueprint(admin_api, url_prefix="/api/v1/admin")
 
     @app.get("/")
-    def index():
-        return render_template("index.html")
+    def index(): return redirect(url_for("dashboard") if current_user.is_authenticated else url_for("login"))
+
+    @app.route("/login", methods=["GET", "POST"], endpoint="login")
+    def login_page():
+        if current_user.is_authenticated: return redirect(url_for("dashboard"))
+        error = None
+        if request.method == "POST":
+            user = db.verify_user(request.form.get("username", ""), request.form.get("password", ""))
+            if user: login_user(User(user)); return redirect(url_for("dashboard"))
+            error = "Invalid email or password."
+        return render_template("login.html", panel_name="VexPanel", error=error, is_admin=False)
+
+    @app.route("/register", methods=["GET", "POST"], endpoint="register")
+    def register_page():
+        if current_user.is_authenticated: return redirect(url_for("dashboard"))
+        error = None
+        if request.method == "POST":
+            email, password = request.form.get("email", "").strip().lower(), request.form.get("password", "")
+            if len(password) < 12: error = "Use a password of at least 12 characters."
+            else:
+                try: db.create_user(email, password); login_user(User(db.get_user_by_email(email))); return redirect(url_for("dashboard"))
+                except Exception: error = "Unable to create account. That email may already be registered."
+        return render_template("register.html", panel_name="VexPanel", error=error, is_admin=False)
+
+    @app.get("/logout")
+    def logout_page(): logout_user(); return redirect(url_for("login_page"))
 
     @app.get("/dashboard")
     def dashboard():
-        from flask_login import current_user
-        if not current_user.is_authenticated:
-            return render_template("index.html"), 401
-        return render_template("dashboard.html", user=current_user)
+        if not current_user.is_authenticated: return redirect(url_for("login"))
+        with db.connect() as conn: vps_list = [dict(row) for row in conn.execute("SELECT * FROM vps WHERE user_id=?", (current_user.id,)).fetchall()]
+        return render_template("dashboard.html", panel_name="VexPanel", is_admin=current_user.role in {"admin", "super_admin"}, vps_list=vps_list, notifications=[], aether_coins=0)
+
+    @app.get("/profile")
+    def profile():
+        if not current_user.is_authenticated: return redirect(url_for("login"))
+        return render_template("profile.html", panel_name="VexPanel", is_admin=current_user.role in {"admin", "super_admin"})
+
+    @app.get("/create_vps")
+    def create_vps_page():
+        if not current_user.is_authenticated: return redirect(url_for("login"))
+        return render_template("create_vps.html", panel_name="VexPanel", is_admin=current_user.role in {"admin", "super_admin"})
 
     @app.get("/health")
     def health():

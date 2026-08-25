@@ -4,7 +4,9 @@ from flask_login import UserMixin, current_user
 
 
 class User(UserMixin):
-    def __init__(self, data): self.id, self.email, self.role = str(data["id"]), data["email"], data["role"]
+    def __init__(self, data):
+        self.id, self.email, self.role = str(data["id"]), data["email"], data["role"]
+        self.username = self.email.split("@", 1)[0]
 
 
 def load_user(user_id):
