@@ -55,11 +55,29 @@ install_dependencies() {
   local manager
   manager="$(package_manager)" || { printf '%bUnsupported package manager. Install Python 3.11+, pip, venv, git, curl, and Docker manually.%b\n' "$YELLOW" "$RESET"; exit 1; }
 
-  printf '%bInstalling system dependencies…%b\n' "$YELLOW" "$RESET"
+  # Finish a prior interrupted installation before asking apt/dnf/pacman to act.
+  if [[ "$manager" == "apt" ]]; then
+    sudo dpkg --configure -a
+  fi
+
+  printf '%bInstalling missing system dependencies…%b\n' "$YELLOW" "$RESET"
   case "$manager" in
-    apt) install_packages python3 python3-venv python3-pip git curl ca-certificates ;;
-    dnf) install_packages python3 python3-pip git curl ca-certificates ;;
-    pacman) install_packages python python-pip git curl ca-certificates ;;
+    apt)
+      need_command python3 || install_packages python3
+      python3 -m venv --help >/dev/null 2>&1 || install_packages python3-venv
+      python3 -m pip --version >/dev/null 2>&1 || install_packages python3-pip
+      need_command curl || install_packages curl ca-certificates
+      ;;
+    dnf)
+      need_command python3 || install_packages python3 python3-pip
+      python3 -m pip --version >/dev/null 2>&1 || install_packages python3-pip
+      need_command curl || install_packages curl ca-certificates
+      ;;
+    pacman)
+      need_command python3 || install_packages python python-pip
+      python3 -m pip --version >/dev/null 2>&1 || install_packages python-pip
+      need_command curl || install_packages curl ca-certificates
+      ;;
   esac
 
   # The standard Ubuntu/Debian Docker package is reliable for this local-Docker provider.
@@ -76,7 +94,7 @@ install_dependencies() {
     sudo systemctl enable --now docker 2>/dev/null || true
   fi
 
-  # Covers systems with Python installed but no ensurepip/venv module.
+  # Covers systems where Python was present but no ensurepip/venv module existed.
   if ! python3 -m venv --help >/dev/null 2>&1; then
     printf '%bInstalling Python virtual-environment support…%b\n' "$YELLOW" "$RESET"
     case "$manager" in
